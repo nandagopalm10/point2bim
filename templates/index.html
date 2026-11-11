@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101a2b">
+  <title>Cloud2BIM | Point cloud to IFC</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, "Segoe UI", sans-serif;
+      background: #101a2b;
+      color: #eef3fb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 28px 16px;
+      background:
+        radial-gradient(ellipse at 50% 0%, #213653 0, transparent 52%),
+        #101a2b;
+    }
+    main { width: min(100%, 560px); }
+    .brand {
+      margin: 0 0 20px;
+      color: #a9bdd8;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    .card {
+      padding: clamp(24px, 6vw, 42px);
+      border: 1px solid #2b3b52;
+      border-radius: 20px;
+      background: rgb(22 34 52 / 94%);
+      box-shadow: 0 24px 80px rgb(0 0 0 / 28%);
+    }
+    h1 { margin: 0; font-size: clamp(26px, 6vw, 34px); letter-spacing: -.04em; }
+    .intro { margin: 12px 0 28px; color: #aebbd0; line-height: 1.65; }
+    .upload {
+      display: grid;
+      gap: 12px;
+      padding: 22px;
+      border: 1px dashed #516883;
+      border-radius: 14px;
+      background: #19273a;
+    }
+    label { font-size: 14px; font-weight: 650; }
+    input[type=file] { width: 100%; color: #bbc8da; font-size: 14px; }
+    input::file-selector-button {
+      margin-right: 12px;
+      padding: 9px 12px;
+      border: 1px solid #526985;
+      border-radius: 8px;
+      background: #22344d;
+      color: #eef3fb;
+      cursor: pointer;
+    }
+    .hint { margin: 0; color: #91a1b7; font-size: 12px; }
+    button, .download {
+      display: flex;
+      min-height: 48px;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      border: 0;
+      border-radius: 10px;
+      background: #55d6a5;
+      color: #09241b;
+      font: inherit;
+      font-weight: 750;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    button:hover, .download:hover { background: #72e6bb; }
+    button:disabled { cursor: wait; opacity: .75; }
+    .messages { display: grid; gap: 10px; margin-bottom: 20px; }
+    .message { margin: 0; padding: 12px 14px; border-radius: 9px; font-size: 14px; line-height: 1.5; }
+    .error { border: 1px solid #714452; background: #3a2531; color: #ffd2d9; }
+    .success { border: 1px solid #336e5c; background: #18382f; color: #c8ffe8; }
+    .download { margin-top: 16px; }
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spin .75s linear infinite;
+    }
+    [hidden] { display: none !important; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    footer { margin-top: 18px; color: #77889f; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="brand">Cloud2BIM</p>
+    <section class="card">
+      <h1>Turn a point cloud into a model.</h1>
+      <p class="intro">Upload an E57 or LAS scan to create an IFC model with reviewable interior geometry candidates.</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="messages" role="status">
+            {% for category, message in messages %}
+              <p class="message {{ category }}">{{ message }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <form action="{{ url_for('convert') }}" method="post" enctype="multipart/form-data" id="upload-form">
+        <div class="upload">
+          <label for="scan">Point cloud file</label>
+          <input id="scan" name="scan" type="file" accept=".e57,.las" required>
+          <p class="hint">E57 or LAS format · LAS coordinates must be in metres · maximum file size 10 GB</p>
+          <button type="submit" id="submit-button">
+            <span class="spinner" id="spinner" hidden></span>
+            <span id="button-label">Create IFC model</span>
+          </button>
+        </div>
+      </form>
+
+      {% if download_url %}
+        <p class="message success">Your IFC model is ready: {{ download_name }}</p>
+        <a class="download" href="{{ download_url }}">Download IFC</a>
+        <p class="message success">
+          Interior analysis found {{ candidate_count }} geometry candidate(s)
+          ({{ furnishing_candidate_count }} furnishing-like). Candidates are not
+          semantic furniture classifications; inspect their evidence in the report.
+        </p>
+        <a class="download" href="{{ report_url }}">Download interior detection report</a>
+      {% endif %}
+    </section>
+    <footer>
+      Your scan is processed locally and is not retained after conversion.
+      Large scans need substantial free disk space and RAM; a 10 GB upload limit
+      does not guarantee every computer can reconstruct a scan of that size.
+    </footer>
+  </main>
+  <script>
+    document.getElementById("upload-form").addEventListener("submit", function () {
+      const button = document.getElementById("submit-button");
+      button.disabled = true;
+      document.getElementById("spinner").hidden = false;
+      document.getElementById("button-label").textContent = "Processing scan…";
+    });
+  </script>
+</body>
+</html>
